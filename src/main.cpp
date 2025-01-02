@@ -33,6 +33,7 @@ String sendStatus;
 
 LiquidCrystal_PCF8574 lcd(0x27);
 
+//Convert elapsed time in miliseconds to mm:ss:ml
 uint8_t* getTime(unsigned long time){
   uint8_t* timeState = (uint8_t*)malloc(3 * sizeof(uint8_t)); 
   timeState[0] = (time / 60000) % 60;
@@ -63,7 +64,7 @@ void onSent(const uint8_t *macAddr, esp_now_send_status_t status) {
     Serial.print("Delivery Status: ");
     sendStatus = ESP_NOW_SEND_SUCCESS ? "Success" : "Fail";
     Serial.println(sendStatus);
-    lcd.setCursor(0,1);
+    lcd.setCursor(0,0);
     lcd.print(sendStatus);
 }
 
@@ -153,18 +154,17 @@ void loop() {
     Serial.printf("Time confirmed \n");
     delay(2000);
   }
-
-
-if(transmit){  
-    lcd.clear();
-  // Prepare message
-  sendData.elapsedTime = recievedTimeTemp;  
-
-    // Send message
-    esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(200);
-    digitalWrite(BUZZER_PIN, LOW);
-    delay(1800);
+  
+  if(transmit){
+      lcd.clear();
+      // Prepare message
+      sendData.elapsedTime = recievedTimeTemp;  
+      
+      // Send message
+      esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+      digitalWrite(BUZZER_PIN, HIGH);
+      delay(200);
+      digitalWrite(BUZZER_PIN, LOW);
+      delay(1800);  
   }
 }
