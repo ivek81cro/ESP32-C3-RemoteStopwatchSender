@@ -33,6 +33,7 @@ String sendStatus;
 
 LiquidCrystal_PCF8574 lcd(0x27);
 
+//Convert elapsed time in miliseconds to mm:ss:ml
 uint8_t* getTime(unsigned long time){
   uint8_t* timeState = (uint8_t*)malloc(3 * sizeof(uint8_t)); 
   timeState[0] = (time / 60000) % 60;
