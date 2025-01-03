@@ -1,85 +1,137 @@
-#include <esp_now.h>
-#include <WiFi.h>
-#include <Wire.h>
-#include <LiquidCrystal_PCF8574.h>
+#include "main.h"
 
-#define BUTTON_PLUS1 4
-#define BUTTON_PLUS3 3
-#define BUTTON_REVERT 2
-#define BUTTON_SEND 6
-#define BUZZER_PIN 7
-#define BUTTON_RESET 5
-#define I2C_SDA 9
-#define I2C_SCL 8
-#define LCD_WIDTH 16
-#define LCD_HEIGHT 2
-
-// Structure to hold the data to send
-// Structure to receive data
-typedef struct {
-  uint8_t seconds;
-  int elapsedTime;
-} DataPacket;
-
-// MAC address of the Receiver ESP32
-uint8_t receiverMAC[] = {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}; // Replace with receiver's MAC address
-
+// Global variable definitions
 DataPacket sendData;
 DataPacket receivedData;
+uint8_t receiverMAC[] = {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}; // Replace with receiver's MAC address
+LiquidCrystal_PCF8574 lcd(0x27);
 
 int recievedTimeTemp = 0;
 
 String sendStatus;
 
-LiquidCrystal_PCF8574 lcd(0x27);
-
-//Convert elapsed time in miliseconds to mm:ss:ml
-uint8_t* getTime(unsigned long time){
-  uint8_t* timeState = (uint8_t*)malloc(3 * sizeof(uint8_t)); 
+// Convert elapsed time in miliseconds to mm:ss:ml
+void getTime(unsigned long time, uint8_t* timeState) 
+{
   timeState[0] = (time / 60000) % 60;
   timeState[1] = (time / 1000) % 60;
   timeState[2] = (time % 1000) / 10;
-
-  return timeState;
 }
 
-void postRecievedDataOnLCD(int elapsedSeconds, String message){
+void postRecievedDataOnLCD(int elapsedSeconds, String message)
+{
   recievedTimeTemp = elapsedSeconds;
   lcd.clear();
-  lcd.setCursor(0,0);
+  lcd.setCursor(0, 0);
   lcd.print(message);
-  lcd.setCursor(0,1);
-  uint8_t* time = getTime(recievedTimeTemp);
-  lcd.printf("%02d:%02d:%02d",time[0], time[1], time[2]);
-  free(time);
+  lcd.setCursor(0, 1);
+  uint8_t timeArray[3];
+  getTime(recievedTimeTemp, timeArray);
+  lcd.printf("%02d:%02d:%02d", timeArray[0], timeArray[1], timeArray[2]);
 }
 
-void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len) {
-    memcpy(&receivedData, incomingData, sizeof(receivedData));
-    Serial.print("Received from Device B: ");
-    if(receivedData.seconds == 5 ){
-      Serial.println("Timer odbrojava, blokirano slanje.");
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Timer odbrojava");
-      lcd.setCursor(0,1);
-      lcd.print("Prijem blokiran");
-    }
-    else{
-      Serial.print(receivedData.elapsedTime);    
-      Serial.println();
-      postRecievedDataOnLCD(receivedData.elapsedTime, "Vrijeme primljeno");
-      sendData.seconds = 0;
-    }
+void updateLCDMessage(String message, int time = -1) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(message);
+  if (time != -1) 
+  {
+    lcd.setCursor(0, 1);
+    uint8_t timeArray[3];
+    getTime(recievedTimeTemp, timeArray);
+    lcd.printf("%02d:%02d:%02d", timeArray[0], timeArray[1], timeArray[2]);
+  }
+  delay(2000);
 }
 
-void onSent(const uint8_t *macAddr, esp_now_send_status_t status) {
-    Serial.print("Delivery Status: ");
-    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
-    lcd.print(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+bool isButtonPressed(uint8_t pin) 
+{
+  static unsigned long lastPressTime = 0;
+  unsigned long currentTime = millis();
+  if (digitalRead(pin) == HIGH && (currentTime - lastPressTime) > 200) {
+    lastPressTime = currentTime;
+    return true;
+  }
+  return false;
 }
 
-void setup() {
+
+uint8_t getButtonPressed()
+{
+  if (isButtonPressed(BUTTON_PLUS1))
+    return 1;
+  if (isButtonPressed(BUTTON_PLUS3))
+    return 2;
+  if (isButtonPressed(BUTTON_RESET))
+    return 3;
+  if (isButtonPressed(BUTTON_REVERT))
+    return 4;
+  if (isButtonPressed(BUTTON_SEND))
+    return 5;
+  return 0;
+}
+
+void manageBacklight() 
+{
+  static unsigned long lastActivity = 0;
+  if (millis() - lastActivity > 5000) { // 5 seconds of inactivity
+    lcd.setBacklight(0);
+  } else {
+    lcd.setBacklight(255);
+  }
+}
+
+void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len)
+{
+  memcpy(&receivedData, incomingData, sizeof(receivedData));
+  DEBUG_PRINT("Received from Device B: ");
+  if (receivedData.seconds == 5)
+  {
+    DEBUG_PRINTLN("Timer odbrojava, blokirano slanje.");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Timer odbrojava");
+    lcd.setCursor(0, 1);
+    lcd.print("Prijem blokiran");
+  }
+  else
+  {
+    DEBUG_PRINTLN(receivedData.elapsedTime);
+    postRecievedDataOnLCD(receivedData.elapsedTime, "Vrijeme primljeno");
+    sendData.seconds = 0;
+  }
+}
+
+void onSent(const uint8_t *macAddr, esp_now_send_status_t status)
+{
+  DEBUG_PRINT("Delivery Status: ");
+  DEBUG_PRINTLN(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+  lcd.print(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+}
+
+bool setupEspNow() {
+  if (esp_now_init() != ESP_OK) {
+    DEBUG_PRINTLN("Error initializing ESP-NOW");
+    return false;
+  }
+  
+  esp_now_register_recv_cb(onReceive);
+  esp_now_register_send_cb(onSent);
+  
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, receiverMAC, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    DEBUG_PRINTLN("Failed to add peer");
+    return false;
+  }
+  return true;
+}
+
+void setup()
+{
 
   Wire.begin(I2C_SDA, I2C_SCL);
 
@@ -87,7 +139,7 @@ void setup() {
   lcd.setBacklight(255);
 
   Serial.begin(115200);
-  delay(2000  );
+  delay(2000);
 
   pinMode(BUTTON_PLUS1, INPUT);
   pinMode(BUTTON_PLUS3, INPUT);
@@ -99,90 +151,49 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   String macAddress = WiFi.macAddress();
-    Serial.println("STA MAC Address: " + macAddress);
+  DEBUG_PRINTLN("STA MAC Address: " + macAddress);
 
-    if (esp_now_init() != ESP_OK) {
-        Serial.println("Error initializing ESP-NOW");
-        return;
-    }
+  if (!setupEspNow()) 
+  {
+    while (true); // Halt if ESP-NOW fails
+  }
 
-    esp_now_register_recv_cb(onReceive);
-    esp_now_register_send_cb(onSent);
-
-    esp_now_peer_info_t peerInfo = {};
-    memcpy(peerInfo.peer_addr, receiverMAC, 6);
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
-
-    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-        Serial.println("Failed to add peer");
-        return;
-    }
 }
 
-void loop() {
+void loop()
+{
   uint8_t numberOfSeconds = 0;
   uint8_t transmit = 0;
 
-  uint8_t button1 = digitalRead(BUTTON_PLUS1);
-  uint8_t button2 = digitalRead(BUTTON_PLUS3);
-  uint8_t button3 = digitalRead(BUTTON_RESET);
-  uint8_t button4 = digitalRead(BUTTON_REVERT);
-  uint8_t button5 = digitalRead(BUTTON_SEND);
-
-  if (button1 == HIGH){
+  uint8_t buttonPressed = getButtonPressed();
+  switch (buttonPressed)
+  {
+  case 1: // Add 1 second
     recievedTimeTemp += 1000;
-    postRecievedDataOnLCD(recievedTimeTemp, "");
-    Serial.printf("Vrijeme dodano:+%d sec \n",1); 
-    delay(2000);
-    lcd.setCursor(0,0);
-    lcd.printf("Dodano + %d sec      ", 1);
-  }
-  else if (button2 == HIGH)
-  {
-    recievedTimeTemp += 3000;    
-    postRecievedDataOnLCD(recievedTimeTemp, "");
-    Serial.printf("Time added:+%d sec \n",3);
-    delay(2000);
-    lcd.setCursor(0,0);
-    lcd.printf("Dodano + %d sec     ", 3);
-  }
-  else if (button3 == HIGH)
-  {
-    recievedTimeTemp = receivedData.elapsedTime;//RESET
-    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme vraceno");
-    delay(2000);
-    Serial.printf("Vrijeme ponisteno\n");
-  }
-  else if (button4 == HIGH)
-  {
-    recievedTimeTemp = 0;//REVERT
-    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme ponisteno");
-    sendData.seconds = 6; 
-    delay(2000);
-    Serial.printf("Time reverted\n");
-  }
-  else if (button5 == HIGH)
-  {
-    transmit = 1;
-    //recievedTimeTemp = 0;//RESET COUNTER
-    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme potvdjeno");
-    Serial.printf("Time confirmed \n");
-    delay(2000);
-  }
-
-
-if(transmit){  
-    lcd.clear();
-    // Prepare message
+    updateLCDMessage("Dodano +1 sec", recievedTimeTemp);
+    break;
+  case 2: // Add 3 seconds
+    recievedTimeTemp += 3000;
+    updateLCDMessage("Dodano +3 sec", recievedTimeTemp);
+    break;
+  case 3: // Reset
+    recievedTimeTemp = receivedData.elapsedTime;
+    updateLCDMessage("Vrijeme vraceno", recievedTimeTemp);
+    break;
+  case 4: // Revert
+    recievedTimeTemp = 0;
+    updateLCDMessage("Vrijeme ponisteno", recievedTimeTemp);
+    sendData.seconds = 6;
+    break;
+  case 5: // Send
     sendData.elapsedTime = recievedTimeTemp;
-    Serial.printf("sent elapsed time %d and message %d\n", sendData.elapsedTime, sendData.seconds);  
-
-    // Send message
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+    updateLCDMessage("Vrijeme potvdjeno", recievedTimeTemp);
     digitalWrite(BUZZER_PIN, HIGH);
     delay(200);
     digitalWrite(BUZZER_PIN, LOW);
-    delay(1800);
+    break;
   }
+
+  manageBacklight();
 }
