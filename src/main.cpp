@@ -49,7 +49,7 @@ void postRecievedDataOnLCD(int elapsedSeconds, String message){
   lcd.print(message);
   lcd.setCursor(0,1);
   uint8_t* time = getTime(recievedTimeTemp);
-  lcd.printf("%d:%d:%d",time[0], time[1], time[2]);
+  lcd.printf("%02d:%02d:%02d",time[0], time[1], time[2]);
   free(time);
 }
 
@@ -68,6 +68,7 @@ void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len) {
       Serial.print(receivedData.elapsedTime);    
       Serial.println();
       postRecievedDataOnLCD(receivedData.elapsedTime, "Vrijeme primljeno");
+      sendData.seconds = 0;
     }
 }
 
@@ -156,6 +157,7 @@ void loop() {
   {
     recievedTimeTemp = 0;//REVERT
     postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme ponisteno");
+    sendData.seconds = 6; 
     delay(2000);
     Serial.printf("Time reverted\n");
   }
@@ -163,7 +165,7 @@ void loop() {
   {
     transmit = 1;
     //recievedTimeTemp = 0;//RESET COUNTER
-    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme potvdjeno");    
+    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme potvdjeno");
     Serial.printf("Time confirmed \n");
     delay(2000);
   }
@@ -171,8 +173,9 @@ void loop() {
 
 if(transmit){  
     lcd.clear();
-  // Prepare message
-  sendData.elapsedTime = recievedTimeTemp;  
+    // Prepare message
+    sendData.elapsedTime = recievedTimeTemp;
+    Serial.printf("sent elapsed time %d and message %d\n", sendData.elapsedTime, sendData.seconds);  
 
     // Send message
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
