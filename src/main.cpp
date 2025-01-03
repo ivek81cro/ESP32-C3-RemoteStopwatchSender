@@ -42,9 +42,11 @@ uint8_t* getTime(unsigned long time){
   return timeState;
 }
 
-void postRecievedDataOnLCD(int elapsedSeconds){
+void postRecievedDataOnLCD(int elapsedSeconds, String message){
   recievedTimeTemp = elapsedSeconds;
   lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(message);
   lcd.setCursor(0,1);
   uint8_t* time = getTime(recievedTimeTemp);
   lcd.printf("%d:%d:%d",time[0], time[1], time[2]);
@@ -54,17 +56,25 @@ void postRecievedDataOnLCD(int elapsedSeconds){
 void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len) {
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     Serial.print("Received from Device B: ");
-    Serial.print(receivedData.elapsedTime);    
-    Serial.println();
-    postRecievedDataOnLCD(receivedData.elapsedTime);
+    if(receivedData.seconds == 5 ){
+      Serial.println("Timer odbrojava, blokirano slanje.");
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Timer odbrojava");
+      lcd.setCursor(0,1);
+      lcd.print("Prijem blokiran");
+    }
+    else{
+      Serial.print(receivedData.elapsedTime);    
+      Serial.println();
+      postRecievedDataOnLCD(receivedData.elapsedTime, "Vrijeme primljeno");
+    }
 }
 
 void onSent(const uint8_t *macAddr, esp_now_send_status_t status) {
     Serial.print("Delivery Status: ");
-    sendStatus = ESP_NOW_SEND_SUCCESS ? "Success" : "Fail";
-    Serial.println(sendStatus);
-    lcd.setCursor(0,1);
-    lcd.print(sendStatus);
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+    lcd.print(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
 }
 
 void setup() {
@@ -75,7 +85,7 @@ void setup() {
   lcd.setBacklight(255);
 
   Serial.begin(115200);
-  delay(2000);
+  delay(2000  );
 
   pinMode(BUTTON_PLUS1, INPUT);
   pinMode(BUTTON_PLUS3, INPUT);
@@ -120,28 +130,32 @@ void loop() {
 
   if (button1 == HIGH){
     recievedTimeTemp += 1000;
-    postRecievedDataOnLCD(recievedTimeTemp);
-    Serial.printf("Time added:%d sec \n",1);
+    postRecievedDataOnLCD(recievedTimeTemp, "");
+    Serial.printf("Vrijeme dodano:+%d sec \n",1); 
     delay(2000);
+    lcd.setCursor(0,0);
+    lcd.printf("Dodano + %d sec      ", 1);
   }
   else if (button2 == HIGH)
   {
     recievedTimeTemp += 3000;    
-    postRecievedDataOnLCD(recievedTimeTemp);
-    Serial.printf("Time added:%d sec \n",3);
+    postRecievedDataOnLCD(recievedTimeTemp, "");
+    Serial.printf("Time added:+%d sec \n",3);
     delay(2000);
+    lcd.setCursor(0,0);
+    lcd.printf("Dodano + %d sec     ", 3);
   }
   else if (button3 == HIGH)
   {
     recievedTimeTemp = receivedData.elapsedTime;//RESET
-    postRecievedDataOnLCD(recievedTimeTemp);
+    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme vraceno");
     delay(2000);
-    Serial.printf("Time reseted\n");
+    Serial.printf("Vrijeme ponisteno\n");
   }
   else if (button4 == HIGH)
   {
     recievedTimeTemp = 0;//REVERT
-    postRecievedDataOnLCD(recievedTimeTemp);
+    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme ponisteno");
     delay(2000);
     Serial.printf("Time reverted\n");
   }
@@ -149,7 +163,7 @@ void loop() {
   {
     transmit = 1;
     //recievedTimeTemp = 0;//RESET COUNTER
-    postRecievedDataOnLCD(recievedTimeTemp);    
+    postRecievedDataOnLCD(recievedTimeTemp, "Vrijeme potvdjeno");    
     Serial.printf("Time confirmed \n");
     delay(2000);
   }
