@@ -86,8 +86,9 @@ void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len)
   }
   else
   {
+    recievedTimeTemp = receivedData.elapsedTime;
     DEBUG_PRINTLN(receivedData.elapsedTime);
-    postRecievedDataOnLCD(receivedData.elapsedTime, "Vrijeme primljeno");
+    updateLCDMessage("Vrijeme primljeno", recievedTimeTemp);
     sendData.seconds = 0;
   }
 }
@@ -96,6 +97,8 @@ void onSent(const uint8_t *macAddr, esp_now_send_status_t status)
 {
   DEBUG_PRINT("Delivery Status: ");
   DEBUG_PRINTLN(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+  lcd.clear();
+  lcd.setCursor(0,0);
   lcd.print(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
 }
 
@@ -169,13 +172,17 @@ void loop()
   case 3: // Reset
     recievedTimeTemp = receivedData.elapsedTime;
     updateLCDMessage("Vrijeme vraceno", recievedTimeTemp);
+    sendData.seconds = 0;
     break;
   case 4: // Revert
     recievedTimeTemp = 0;
     updateLCDMessage("Vrijeme ponisteno", recievedTimeTemp);
-    sendData.seconds = 6;
     break;
   case 5: // Send
+    if(recievedTimeTemp == 0)
+    { 
+      sendData.seconds = 6;
+    }
     sendData.elapsedTime = recievedTimeTemp;
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
     updateLCDMessage("Vrijeme potvdjeno", recievedTimeTemp);
