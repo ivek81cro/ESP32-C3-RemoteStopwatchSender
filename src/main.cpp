@@ -71,16 +71,6 @@ uint8_t getButtonPressed()
   return 0;
 }
 
-void manageBacklight() 
-{
-  static unsigned long lastActivity = 0;
-  if (millis() - lastActivity > 5000) { // 5 seconds of inactivity
-    lcd.setBacklight(0);
-  } else {
-    lcd.setBacklight(255);
-  }
-}
-
 void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len)
 {
   memcpy(&receivedData, incomingData, sizeof(receivedData));
@@ -194,6 +184,4 @@ void loop()
     digitalWrite(BUZZER_PIN, LOW);
     break;
   }
-
-  manageBacklight();
 }
