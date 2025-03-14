@@ -172,12 +172,10 @@ void RemoteStopwatchSender::loop()
   case 1: // Add 1 second
     recievedTimeTemp += 1000;
     updateLCDMessage("Dodano +1 sec", recievedTimeTemp);
-    sendData.seconds = 5;
     break;
   case 2: // Add 3 seconds
     recievedTimeTemp += 3000;
     updateLCDMessage("Dodano +3 sec", recievedTimeTemp);
-    sendData.seconds = 5;
     break;
   case 3: // Reset
     recievedTimeTemp = receivedData.elapsedTime;
@@ -192,6 +190,10 @@ void RemoteStopwatchSender::loop()
     if(recievedTimeTemp == 0)
     { 
       sendData.seconds = 6;
+    }
+    else
+    {
+      sendData.seconds = 5;
     }
     sendData.elapsedTime = recievedTimeTemp;
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
