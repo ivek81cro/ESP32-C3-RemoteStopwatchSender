@@ -73,7 +73,7 @@ void RemoteStopwatchSender::onReceive(const uint8_t *mac, const uint8_t *incomin
 {
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     DEBUG_PRINT("Received from Device B: ");
-    if (receivedData.seconds == 5)
+    if (receivedData.code == 5)
     {
       DEBUG_PRINTLN("Timer odbrojava, blokirano slanje.");
       lcd.clear();
@@ -87,7 +87,7 @@ void RemoteStopwatchSender::onReceive(const uint8_t *mac, const uint8_t *incomin
       recievedTimeTemp = receivedData.elapsedTime;
       DEBUG_PRINTLN(receivedData.elapsedTime);
       updateLCDMessage("Vrijeme primljeno", recievedTimeTemp);
-      sendData.seconds = 0;
+      sendData.code = 0;
     }
 }   
 
@@ -141,6 +141,8 @@ void RemoteStopwatchSender::setup()
     lcd.setBacklight(255);
 
     Serial.begin(115200);
+    Serial1.begin(9600, SERIAL_8N1, 20, 21);
+
     delay(2000);
 
     pinMode(BUTTON_PLUS1, INPUT);
@@ -180,7 +182,7 @@ void RemoteStopwatchSender::loop()
   case 3: // Reset
     recievedTimeTemp = receivedData.elapsedTime;
     updateLCDMessage("Vrijeme vraceno", recievedTimeTemp);
-    sendData.seconds = 0;
+    sendData.code = 0;
     break;
   case 4: // Revert
     recievedTimeTemp = 0;
@@ -189,11 +191,11 @@ void RemoteStopwatchSender::loop()
   case 5: // Send
     if(recievedTimeTemp == 0)
     { 
-      sendData.seconds = 6;
+      sendData.code = 6;
     }
     else
     {
-      sendData.seconds = 5;
+      sendData.code = 5;
     }
     sendData.elapsedTime = recievedTimeTemp;
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));

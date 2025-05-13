@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <Wire.h>
 #include <LiquidCrystal_PCF8574.h>
+#include <HardwareSerial.h>
 
 // Debugging macros
 #define DEBUG
@@ -16,21 +17,23 @@
 #define DEBUG_PRINTLN(x)
 #endif
 
-// Pin definitions
+// Pin definitions      //Remote 0.1 pins
 #define BUTTON_PLUS1 4
 #define BUTTON_PLUS3 3
-#define BUTTON_REVERT 2
-#define BUTTON_SEND 0
-#define BUZZER_PIN 5
-#define BUTTON_RESET 1
+#define BUTTON_REVERT 6 //2
+#define BUTTON_SEND 2   //0
+#define BUZZER_PIN 7    //5
+#define BUTTON_RESET 5  //1
 #define I2C_SDA 9
 #define I2C_SCL 8
+
+// LCD dimensions
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
 
 // Structure definition for data packet
 typedef struct {
-  uint8_t seconds;
+  uint8_t code;
   int elapsedTime;
 } DataPacket;
 
