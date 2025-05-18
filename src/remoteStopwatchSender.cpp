@@ -73,31 +73,75 @@ void RemoteStopwatchSender::onReceive(const uint8_t *mac, const uint8_t *incomin
 {
     memcpy(&receivedData, incomingData, sizeof(receivedData));
     DEBUG_PRINT("Received from Device B: ");
-    if (receivedData.code == 5)
-    {
-      DEBUG_PRINTLN("Timer odbrojava, blokirano slanje.");
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Timer odbrojava");
-      lcd.setCursor(0, 1);
-      lcd.print("Prijem blokiran");
-    }
-    else
-    {
-      recievedTimeTemp = receivedData.elapsedTime;
-      DEBUG_PRINTLN(receivedData.elapsedTime);
-      updateLCDMessage("Vrijeme primljeno", recievedTimeTemp);
-      sendData.code = 0;
-    }
-}   
+    readIncommingMessage();
+}
+
+void RemoteStopwatchSender::readIncommingMessage()
+{
+  if (receivedData.code == 5)
+  {
+    DEBUG_PRINTLN("Timer odbrojava, blokirano slanje.");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Timer odbrojava");
+    lcd.setCursor(0, 1);
+    lcd.print("Daljinski blokiran 10sec");
+  }
+  else if (receivedData.code == 9)
+  {
+    DEBUG_PRINTLN("Timer pokrenut.");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Timer pokrenut");
+    lcd.setCursor(0, 1);
+    lcd.print("Vrijeme krenulo");
+    Serial1.println("Start " + String(receivedData.startTime));
+  }
+  else if (receivedData.code == 8)
+  {
+    recievedTimeTemp = receivedData.elapsedTime;
+    DEBUG_PRINTLN(recievedTimeTemp);
+    updateLCDMessage("Vrijeme primljeno", recievedTimeTemp);
+    sendData.code = 0;
+    Serial1.println("Stop " + String(receivedData.stopTime));
+    Serial1.println("Elapsed " + String(receivedData.elapsedTime));
+  }
+  else if (receivedData.code == 6)
+  {
+    DEBUG_PRINTLN("Timer resetiran.");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Timer resetiran");
+    lcd.setCursor(0, 1);
+    lcd.print("Vrijeme ponisteno");
+  }
+  else if (receivedData.code == 7)
+  {
+    DEBUG_PRINTLN("Timer ponisten.");
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Timer ponisten");
+    lcd.setCursor(0, 1);
+    lcd.print("Vrijeme ponisteno");
+  }
+  else
+  {
+    DEBUG_PRINTLN("Unknown code received. " + String(receivedData.code));
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Nepoznat kod");
+    lcd.setCursor(0, 1);
+    lcd.print("Primljeno");
+  }
+}
 
 void RemoteStopwatchSender::onSent(const uint8_t *macAddr, esp_now_send_status_t status)
 {
     DEBUG_PRINT("Delivery Status: ");
-    DEBUG_PRINTLN(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+    DEBUG_PRINTLN(status);
     lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print(status == ESP_NOW_SEND_SUCCESS ? "Uspjesno poslano" : "Nije poslano");
+    lcd.print(status == 1 ? "Uspjesno poslano" : "Nije poslano");
 }
 
 void RemoteStopwatchSender::onReceiveStatic(const uint8_t *mac, const uint8_t *incomingData, int len) {
@@ -141,7 +185,7 @@ void RemoteStopwatchSender::setup()
     lcd.setBacklight(255);
 
     Serial.begin(115200);
-    Serial1.begin(9600, SERIAL_8N1, 20, 21);
+    Serial1.begin(115200, SERIAL_8N1, 20, 21);
 
     delay(2000);
 
@@ -174,14 +218,17 @@ void RemoteStopwatchSender::loop()
   case 1: // Add 1 second
     recievedTimeTemp += 1000;
     updateLCDMessage("Dodano +1 sec", recievedTimeTemp);
+    Serial1.println("P 1");
     break;
   case 2: // Add 3 seconds
     recievedTimeTemp += 3000;
     updateLCDMessage("Dodano +3 sec", recievedTimeTemp);
+    Serial1.println("P 3");
     break;
   case 3: // Reset
     recievedTimeTemp = receivedData.elapsedTime;
     updateLCDMessage("Vrijeme vraceno", recievedTimeTemp);
+    Serial1.println("P 0");
     sendData.code = 0;
     break;
   case 4: // Revert
@@ -200,6 +247,7 @@ void RemoteStopwatchSender::loop()
     sendData.elapsedTime = recievedTimeTemp;
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
     updateLCDMessage("Vrijeme potvdjeno", recievedTimeTemp);
+    Serial1.println("Confirmed " + String(recievedTimeTemp));
     digitalWrite(BUZZER_PIN, HIGH);
     delay(200);
     digitalWrite(BUZZER_PIN, LOW);

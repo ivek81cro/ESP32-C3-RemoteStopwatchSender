@@ -31,10 +31,17 @@
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
 
-// Structure definition for data packet
+// Data Structures
+/*Codes:    5 = recieve blocked, stopwatch running
+            9 = stopwatch started, start timestamp
+            8 = stopwatch stopped, stop timestamp
+            6 = trigger reset
+*/
 typedef struct {
-  uint8_t code;
-  int elapsedTime;
+    uint8_t code; //code for messages between MCU's
+    int stopTime; //elapsed time in milliseconds
+    int startTime; //start timestamp
+    int elapsedTime; //elapsed time in milliseconds
 } DataPacket;
 
 // Class definition for RemoteStopwatchSender
@@ -50,6 +57,7 @@ public:
   uint8_t getButtonPressed(); // Get which button is pressed
   void manageBacklight(); // Manage LCD backlight
   void onReceive(const uint8_t *mac, const uint8_t *incomingData, int len); // Callback for receiving data
+  void readIncommingMessage();
   void onSent(const uint8_t *macAddr, esp_now_send_status_t status); // Callback for sending data
   bool setupEspNow(); // Setup ESP-NOW
 
