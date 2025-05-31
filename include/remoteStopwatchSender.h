@@ -17,13 +17,13 @@
 #define DEBUG_PRINTLN(x)
 #endif
 
-// Pin definitions      //Remote 0.1 pins
+// Pin definitions  
 #define BUTTON_PLUS1 4
 #define BUTTON_PLUS3 3
-#define BUTTON_REVERT 6 //2
-#define BUTTON_SEND 2   //0
-#define BUZZER_PIN 7    //5
-#define BUTTON_RESET 5  //1
+#define BUTTON_REVERT 2 
+#define BUTTON_SEND 0   
+#define BUZZER_PIN 5    
+#define BUTTON_RESET 1  
 #define I2C_SDA 9
 #define I2C_SCL 8
 

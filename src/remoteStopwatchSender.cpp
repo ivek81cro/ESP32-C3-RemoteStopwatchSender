@@ -46,7 +46,7 @@ bool RemoteStopwatchSender::isButtonPressed(uint8_t pin)
 {
     static unsigned long lastPressTime = 0;
     unsigned long currentTime = millis();
-    if (digitalRead(pin) == HIGH && (currentTime - lastPressTime) > 200) {
+    if (digitalRead(pin) == HIGH && (currentTime - lastPressTime) > 1000) {
       lastPressTime = currentTime;
       return true;
     }
@@ -55,10 +55,18 @@ bool RemoteStopwatchSender::isButtonPressed(uint8_t pin)
 
 uint8_t RemoteStopwatchSender::getButtonPressed()
 {
-    if (isButtonPressed(BUTTON_PLUS1))
-      return 1;
-    if (isButtonPressed(BUTTON_PLUS3))
-      return 2;
+    if (isButtonPressed(BUTTON_PLUS1)){
+      if (digitalRead(BUTTON_PLUS3))
+        return 6; // Both buttons pressed
+      else
+        return 1; // Button 1 pressed
+    }
+    if (isButtonPressed(BUTTON_PLUS3)){
+      if (digitalRead(BUTTON_PLUS1))
+        return 6; // Both buttons pressed
+      else
+        return 2; // Button 2 pressed
+    }
     if (isButtonPressed(BUTTON_RESET))
       return 3;
     if (isButtonPressed(BUTTON_REVERT))
@@ -197,7 +205,6 @@ void RemoteStopwatchSender::setup()
     pinMode(BUZZER_PIN, OUTPUT);
 
     WiFi.mode(WIFI_STA);
-
     String macAddress = WiFi.macAddress();
     DEBUG_PRINTLN("STA MAC Address: " + macAddress);
 
@@ -251,6 +258,14 @@ void RemoteStopwatchSender::loop()
     digitalWrite(BUZZER_PIN, HIGH);
     delay(200);
     digitalWrite(BUZZER_PIN, LOW);
+    break;
+  case 6: // Both buttons pressed    
+      recievedTimeTemp = receivedData.elapsedTime;
+      sendData.code = 7;
+      esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+      updateLCDMessage("Diskvalifikacija", recievedTimeTemp);
+      Serial1.println("disq");
+      delay(200);
     break;
   }
 }
