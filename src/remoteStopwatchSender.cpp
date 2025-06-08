@@ -206,6 +206,7 @@ void RemoteStopwatchSender::setup()
 
     WiFi.mode(WIFI_STA);
     String macAddress = WiFi.macAddress();
+    delay(10000);
     DEBUG_PRINTLN("STA MAC Address: " + macAddress);
 
     if (!setupEspNow()) 
