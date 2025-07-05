@@ -20,10 +20,10 @@
 // Pin definitions  
 #define BUTTON_PLUS1 4
 #define BUTTON_PLUS3 3
-#define BUTTON_REVERT 2 
+#define BUTTON_REVERT 1 
 #define BUTTON_SEND 0   
 #define BUZZER_PIN 5    
-#define BUTTON_RESET 1  
+#define BUTTON_RESET 2  
 #define I2C_SDA 9
 #define I2C_SCL 8
 
@@ -69,6 +69,7 @@ private:
   DataPacket sendData; // Data to send
   DataPacket receivedData; // Data received
   uint8_t receiverMAC[6] = {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}; // Receiver's MAC address
+  //{0x7C, 0x2C, 0x67, 0xD2, 0x26, 0x54} {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}
   LiquidCrystal_PCF8574 lcd = LiquidCrystal_PCF8574(0x27); // LCD instance
   int recievedTimeTemp = 0; // Temporary storage for received time
 };

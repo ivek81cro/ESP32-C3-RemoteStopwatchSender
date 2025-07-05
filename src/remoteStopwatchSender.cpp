@@ -56,21 +56,31 @@ bool RemoteStopwatchSender::isButtonPressed(uint8_t pin)
 uint8_t RemoteStopwatchSender::getButtonPressed()
 {
     if (isButtonPressed(BUTTON_PLUS1)){
-      if (digitalRead(BUTTON_PLUS3))
+      if (digitalRead(BUTTON_PLUS3)){
+        DEBUG_PRINTLN("Disqualified");
         return 6; // Both buttons pressed
-      else
+      }
+      else{
+        DEBUG_PRINTLN("Added 1 second");
         return 1; // Button 1 pressed
+      }
     }
     if (isButtonPressed(BUTTON_PLUS3)){
-      if (digitalRead(BUTTON_PLUS1))
+      if (digitalRead(BUTTON_PLUS1)){
+        DEBUG_PRINTLN("Disqualified");
         return 6; // Both buttons pressed
-      else
+      }
+      else{
+        DEBUG_PRINTLN("Added 3 seconds");
         return 2; // Button 2 pressed
+      }
     }
-    if (isButtonPressed(BUTTON_RESET))
-      return 3;
-    if (isButtonPressed(BUTTON_REVERT))
-      return 4;
+    if (isButtonPressed(BUTTON_REVERT)){
+      DEBUG_PRINTLN("Revert pressed");
+      return 3;}
+    if (isButtonPressed(BUTTON_RESET)){
+      DEBUG_PRINTLN("Reset pressed");
+      return 4;}
     if (isButtonPressed(BUTTON_SEND))
       return 5;
 
@@ -147,9 +157,6 @@ void RemoteStopwatchSender::onSent(const uint8_t *macAddr, esp_now_send_status_t
 {
     DEBUG_PRINT("Delivery Status: ");
     DEBUG_PRINTLN(status);
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print(status == 1 ? "Uspjesno poslano" : "Nije poslano");
 }
 
 void RemoteStopwatchSender::onReceiveStatic(const uint8_t *mac, const uint8_t *incomingData, int len) {
@@ -202,12 +209,20 @@ void RemoteStopwatchSender::setup()
     pinMode(BUTTON_RESET, INPUT);
     pinMode(BUTTON_REVERT, INPUT);
     pinMode(BUTTON_SEND, INPUT);
-    pinMode(BUZZER_PIN, OUTPUT);
+    
+    //Aktivni buzzer
+    //pinMode(BUZZER_PIN, OUTPUT);
+
+    //Pasivni buzzer
+    ledcAttachPin(BUZZER_PIN, 0);
+    ledcSetup(0, 2000, 8); // Channel 0, 2kHz frequency, 8-bit resolution
 
     WiFi.mode(WIFI_STA);
     String macAddress = WiFi.macAddress();
-    delay(10000);
+    updateLCDMessage("Podizanje sustava.......");
+    delay(5000);
     DEBUG_PRINTLN("STA MAC Address: " + macAddress);
+    updateLCDMessage("Spreman");
 
     if (!setupEspNow()) 
     {
@@ -219,8 +234,8 @@ void RemoteStopwatchSender::loop()
 {
   uint8_t numberOfSeconds = 0;
   uint8_t transmit = 0;
-
   uint8_t buttonPressed = getButtonPressed();
+
   switch (buttonPressed)
   {
   case 1: // Add 1 second
@@ -233,40 +248,56 @@ void RemoteStopwatchSender::loop()
     updateLCDMessage("Dodano +3 sec", recievedTimeTemp);
     Serial1.println("P 3");
     break;
-  case 3: // Reset
+  case 3: // Revert
     recievedTimeTemp = receivedData.elapsedTime;
     updateLCDMessage("Vrijeme vraceno", recievedTimeTemp);
     Serial1.println("P 0");
-    sendData.code = 0;
     break;
-  case 4: // Revert
+  case 4: // Reset
     recievedTimeTemp = 0;
-    updateLCDMessage("Vrijeme ponisteno", recievedTimeTemp);
+    updateLCDMessage("Vrijeme ponisteno", recievedTimeTemp);    
     break;
   case 5: // Send
-    if(recievedTimeTemp == 0)
-    { 
-      sendData.code = 6;
-    }
-    else
     {
-      sendData.code = 5;
+      if(recievedTimeTemp == 0)
+      { 
+        sendData.code = 3;//reset display and arm trigger
+      }
+      else
+      {
+        sendData.code = 5;
+      }    
+      sendData.elapsedTime = recievedTimeTemp;
+      esp_err_t esp_message = esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+      if(esp_message == ESP_OK)
+      {
+        updateLCDMessage("Vrijeme potvdjeno", recievedTimeTemp);
+        DEBUG_PRINTLN("Message sent successfully: " + String(esp_message));
+        Serial1.println("Confirmed " + String(recievedTimeTemp));
+      }
+      else
+      {
+        updateLCDMessage("Greska ponovi");
+        DEBUG_PRINTLN("Error sending message: " + String(esp_message));
+      }
+      //Aktivni buzzer
+      //digitalWrite(BUZZER_PIN, HIGH);
+      //delay(200);
+      //digitalWrite(BUZZER_PIN, LOW);
+
+      //Pasivni buzzer
+      ledcWrite(0, 255); // Start the buzzer at half volume
+      delay(1000); 
+      ledcWrite(0, 0); // Stop the buzzer
     }
-    sendData.elapsedTime = recievedTimeTemp;
-    esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
-    updateLCDMessage("Vrijeme potvdjeno", recievedTimeTemp);
-    Serial1.println("Confirmed " + String(recievedTimeTemp));
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(200);
-    digitalWrite(BUZZER_PIN, LOW);
     break;
   case 6: // Both buttons pressed    
-      recievedTimeTemp = receivedData.elapsedTime;
-      sendData.code = 7;
-      esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
-      updateLCDMessage("Diskvalifikacija", recievedTimeTemp);
-      Serial1.println("disq");
-      delay(200);
+    recievedTimeTemp = receivedData.elapsedTime;
+    sendData.code = 7;
+    esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+    updateLCDMessage("Diskvalifikacija", recievedTimeTemp);
+    Serial1.println("disq");
+    delay(200);
     break;
   }
 }
