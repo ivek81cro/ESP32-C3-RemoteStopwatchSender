@@ -12,6 +12,7 @@
 #ifdef DEBUG
 #define DEBUG_PRINT(x) Serial.print(x)
 #define DEBUG_PRINTLN(x) Serial.println(x)
+#define DEBUG_PRINTF(...) Serial.printf(__VA_ARGS__)
 #else
 #define DEBUG_PRINT(x)
 #define DEBUG_PRINTLN(x)
@@ -38,6 +39,7 @@
             6 = trigger reset
 */
 typedef struct {
+    uint8_t id; //Stopwatch Id
     uint8_t code; //code for messages between MCU's
     int stopTime; //elapsed time in milliseconds
     int startTime; //start timestamp
@@ -68,8 +70,12 @@ private:
   static RemoteStopwatchSender* instance; // Singleton instance
   DataPacket sendData; // Data to send
   DataPacket receivedData; // Data received
-  uint8_t receiverMAC[6] = {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}; // Receiver's MAC address
-  //{0x7C, 0x2C, 0x67, 0xD2, 0x26, 0x54} {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}
+  uint8_t receiverMAC[6] = {0xEC, 0xDA, 0x3B, 0xC0, 0x18, 0x9C}; // Receiver's MAC address
+  //{0x7C, 0x2C, 0x67, 0xD2, 0x26, 0x54} 
+  //{0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}
+  //{0xEC, 0xDA, 0x3B, 0xC0, 0x18, 0x9C}
+  //{0x08, 0xB6, 0x1F, 0x37, 0xE5, 0x0C}-IR
+  //{0xD8, 0xBC, 0x38, 0xF9, 0x64, 0x74}-IR
   LiquidCrystal_PCF8574 lcd = LiquidCrystal_PCF8574(0x27); // LCD instance
   int recievedTimeTemp = 0; // Temporary storage for received time
 };

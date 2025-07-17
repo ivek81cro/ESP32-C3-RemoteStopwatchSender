@@ -84,7 +84,7 @@ uint8_t RemoteStopwatchSender::getButtonPressed()
     if (isButtonPressed(BUTTON_SEND))
       return 5;
 
-    return 0;
+  return 0;
 }
 
 void RemoteStopwatchSender::onReceive(const uint8_t *mac, const uint8_t *incomingData, int len)
@@ -155,8 +155,9 @@ void RemoteStopwatchSender::readIncommingMessage()
 
 void RemoteStopwatchSender::onSent(const uint8_t *macAddr, esp_now_send_status_t status)
 {
-    DEBUG_PRINT("Delivery Status: ");
-    DEBUG_PRINTLN(status);
+  DEBUG_PRINTF("Code set to: %d\n", sendData.code);
+  DEBUG_PRINT("Delivery Status: ");
+  DEBUG_PRINTLN(status);
 }
 
 void RemoteStopwatchSender::onReceiveStatic(const uint8_t *mac, const uint8_t *incomingData, int len) {
@@ -243,10 +244,15 @@ void RemoteStopwatchSender::loop()
     updateLCDMessage("Dodano +1 sec", recievedTimeTemp);
     Serial1.println("P 1");
     break;
-  case 2: // Add 3 seconds
-    recievedTimeTemp += 3000;
-    updateLCDMessage("Dodano +3 sec", recievedTimeTemp);
-    Serial1.println("P 3");
+  case 2:
+    {
+      sendData.code = 10; // Add 3 seconds
+      esp_err_t esp_message = esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
+      // Add 3 seconds
+      //recievedTimeTemp += 3000;
+      //updateLCDMessage("Dodano +3 sec", recievedTimeTemp);
+      //Serial1.println("P 3");
+    }
     break;
   case 3: // Revert
     recievedTimeTemp = receivedData.elapsedTime;
