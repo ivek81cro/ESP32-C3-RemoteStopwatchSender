@@ -53,8 +53,7 @@ public:
   void setup(); // Setup method
   void loop(); // Loop method
   void getTime(unsigned long time, uint8_t* timeState); // Get time in formatted state
-  void postRecievedDataOnLCD(int elapsedSeconds, String message); // Post received data on LCD
-  void updateLCDMessage(String message, int time = -1); // Update LCD message
+  void updateLCDMessage(String message1 = "", String message2 = "", int time = -1); // Update LCD message
   bool isButtonPressed(uint8_t pin); // Check if button is pressed
   uint8_t getButtonPressed(); // Get which button is pressed
   void manageBacklight(); // Manage LCD backlight
@@ -70,7 +69,7 @@ private:
   static RemoteStopwatchSender* instance; // Singleton instance
   DataPacket sendData; // Data to send
   DataPacket receivedData; // Data received
-  uint8_t receiverMAC[6] = {0xEC, 0xDA, 0x3B, 0xC0, 0x18, 0x9C}; // Receiver's MAC address
+  uint8_t receiverMAC[6] = {0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}; // Receiver's MAC address
   //{0x7C, 0x2C, 0x67, 0xD2, 0x26, 0x54} 
   //{0xEC, 0xDA, 0x3B, 0xBF, 0x6E, 0x6C}
   //{0xEC, 0xDA, 0x3B, 0xC0, 0x18, 0x9C}

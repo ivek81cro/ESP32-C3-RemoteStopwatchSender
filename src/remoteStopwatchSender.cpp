@@ -14,32 +14,35 @@ void RemoteStopwatchSender::getTime(unsigned long time, uint8_t* timeState)
     timeState[0] = (time / 60000) % 60;
     timeState[1] = (time / 1000) % 60;
     timeState[2] = (time % 1000) / 10;
-}   
-
-void RemoteStopwatchSender::postRecievedDataOnLCD(int elapsedSeconds, String message)
-{
-    recievedTimeTemp = elapsedSeconds;
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(message);
-    lcd.setCursor(0, 1);
-    uint8_t timeArray[3];
-    getTime(recievedTimeTemp, timeArray);
-    lcd.printf("%02d:%02d:%02d", timeArray[0], timeArray[1], timeArray[2]);
 }
 
-void RemoteStopwatchSender::updateLCDMessage(String message, int time) {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print(message);
-    if (time != -1) 
+void RemoteStopwatchSender::updateLCDMessage(String message1, String message2, int time) {
+    if(message1 != "")
+    {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      // Pad message1 to 16 characters
+      while(message1.length() < 16) {
+        message1 += " ";
+      }
+      lcd.print(message1);
+    }
+    if (message2 != "")
+    {
+      lcd.setCursor(0, 1);
+      // Pad message2 to 16 characters
+      while(message2.length() < 16) {
+        message2 += " ";
+      }
+      lcd.print(message2);
+    }
+    if (time != -1 && message2 == "") 
     {
       lcd.setCursor(0, 1);
       uint8_t timeArray[3];
       getTime(recievedTimeTemp, timeArray);
       lcd.printf("%02d:%02d:%02d", timeArray[0], timeArray[1], timeArray[2]);
     }
-    delay(1000);
 }
 
 bool RemoteStopwatchSender::isButtonPressed(uint8_t pin) 
@@ -71,7 +74,7 @@ uint8_t RemoteStopwatchSender::getButtonPressed()
         return 6; // Both buttons pressed
       }
       else{
-        DEBUG_PRINTLN("Added 3 seconds");
+        DEBUG_PRINTLN("Trigger toggled");
         return 2; // Button 2 pressed
       }
     }
@@ -99,57 +102,52 @@ void RemoteStopwatchSender::readIncommingMessage()
   if (receivedData.code == 5)
   {
     DEBUG_PRINTLN("Timer odbrojava, blokirano slanje.");
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Timer odbrojava");
-    lcd.setCursor(0, 1);
-    lcd.print("Daljinski blokiran 10sec");
+    updateLCDMessage("Timer odbrojava", "Blokirano slanje");
   }
   else if (receivedData.code == 9)
   {
     DEBUG_PRINTLN("Timer pokrenut.");
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Timer pokrenut");
-    lcd.setCursor(0, 1);
-    lcd.print("Vrijeme krenulo");
+    updateLCDMessage("Vrijeme krenulo", "Senzor OFF");
     Serial1.println("Start " + String(receivedData.startTime));
   }
   else if (receivedData.code == 8)
   {
     recievedTimeTemp = receivedData.elapsedTime;
     DEBUG_PRINTLN(recievedTimeTemp);
-    updateLCDMessage("Vrijeme primljeno", recievedTimeTemp);
+    updateLCDMessage("Vrijeme primljeno", "", recievedTimeTemp);
     sendData.code = 0;
     Serial1.println("Stop " + String(receivedData.stopTime));
     Serial1.println("Elapsed " + String(receivedData.elapsedTime));
   }
+  else if (receivedData.code == 3)
+  {
+    DEBUG_PRINTLN("Trigger armed.");
+    updateLCDMessage("Trigger armed", "Senzor ON");
+  }
   else if (receivedData.code == 6)
   {
     DEBUG_PRINTLN("Timer resetiran.");
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Timer resetiran");
-    lcd.setCursor(0, 1);
-    lcd.print("Vrijeme ponisteno");
+    updateLCDMessage("Timer resetiran", "Vrijeme 0");
   }
   else if (receivedData.code == 7)
   {
     DEBUG_PRINTLN("Timer ponisten.");
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Timer ponisten");
-    lcd.setCursor(0, 1);
-    lcd.print("Vrijeme ponisteno");
+    updateLCDMessage("Timer ponisten", "Vrijeme 0");
+  }
+  else if (receivedData.code == 20)
+  {
+    DEBUG_PRINTLN("Trigger armed");
+    updateLCDMessage("", "Senzor ON");
+  }
+  else if (receivedData.code == 21)
+  {
+    DEBUG_PRINTLN("Trigger disarmed");
+    updateLCDMessage("", "Senzor OFF");
   }
   else
   {
     DEBUG_PRINTLN("Unknown code received. " + String(receivedData.code));
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Nepoznat kod");
-    lcd.setCursor(0, 1);
-    lcd.print("Primljeno");
+    updateLCDMessage("Nepoznat kod", String(receivedData.code));
   }
 }
 
@@ -241,7 +239,7 @@ void RemoteStopwatchSender::loop()
   {
   case 1: // Add 1 second
     recievedTimeTemp += 1000;
-    updateLCDMessage("Dodano +1 sec", recievedTimeTemp);
+    updateLCDMessage("Dodano +1 sec", "", recievedTimeTemp);
     Serial1.println("P 1");
     break;
   case 2:
@@ -256,12 +254,12 @@ void RemoteStopwatchSender::loop()
     break;
   case 3: // Revert
     recievedTimeTemp = receivedData.elapsedTime;
-    updateLCDMessage("Vrijeme vraceno", recievedTimeTemp);
+    updateLCDMessage("Vrijeme vraceno", "", recievedTimeTemp);
     Serial1.println("P 0");
     break;
   case 4: // Reset
     recievedTimeTemp = 0;
-    updateLCDMessage("Vrijeme ponisteno", recievedTimeTemp);    
+    updateLCDMessage("Vrijeme ponisteno", "", recievedTimeTemp);
     break;
   case 5: // Send
     {
@@ -277,7 +275,14 @@ void RemoteStopwatchSender::loop()
       esp_err_t esp_message = esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
       if(esp_message == ESP_OK)
       {
-        updateLCDMessage("Vrijeme potvdjeno", recievedTimeTemp);
+        if(recievedTimeTemp == 0)
+        {
+          updateLCDMessage("Vrijeme spremno", "Senzor ON");
+        }
+        else
+        {
+          updateLCDMessage("Vrijeme potvdjeno", "", recievedTimeTemp);
+        }
         DEBUG_PRINTLN("Message sent successfully: " + String(esp_message));
         Serial1.println("Confirmed " + String(recievedTimeTemp));
       }
@@ -301,7 +306,7 @@ void RemoteStopwatchSender::loop()
     recievedTimeTemp = receivedData.elapsedTime;
     sendData.code = 7;
     esp_now_send(receiverMAC, (uint8_t *)&sendData, sizeof(sendData));
-    updateLCDMessage("Diskvalifikacija", recievedTimeTemp);
+    updateLCDMessage("Diskvalifikacija", "", recievedTimeTemp);
     Serial1.println("disq");
     delay(200);
     break;
